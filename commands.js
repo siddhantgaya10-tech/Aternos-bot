@@ -6,8 +6,9 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const hostile = e => e && (e.type === 'hostile' || e.kind === 'Hostile mobs');
 
 export function setup(bot, r) {
+  bot.physicsEnabled = false;
   bot.loadPlugin(pathfinder); bot.loadPlugin(cb.plugin || cb); bot.loadPlugin(pvp.plugin || pvp);
-  bot.once('spawn', () => bot.pathfinder.setMovements(new Movements(bot)));
+  bot.once('spawn', () => { bot.pathfinder.setMovements(new Movements(bot)); bot.physicsEnabled = false; });
   let task = 0, eating = false, lastKey = '', lastAt = 0;
   const say = m => { bot.chat(String(m).slice(0, 250)); r.log('bot: ' + m); };
   const ownerName = () => (r.cfg.owner || '').toLowerCase();
@@ -16,11 +17,12 @@ export function setup(bot, r) {
     task++; r.busy = false;
     try { bot.collectBlock.cancelTask(() => {}); } catch {}
     try { bot.pathfinder.setGoal(null); bot.pvp.stop(); bot.clearControlStates(); bot.stopDigging(); } catch {}
+    bot.physicsEnabled = false;
   };
   const run = async fn => {
-    stop(); const id = task; r.busy = true;
+    stop(); const id = task; r.busy = true; bot.physicsEnabled = true;
     try { await fn(() => id !== task); } catch (e) { if (id === task) say('Failed: ' + String(e.message).slice(0, 90)); }
-    if (id === task) r.busy = false;
+    if (id === task) { r.busy = false; bot.physicsEnabled = false; }
   };
   const ids = names => names.map(n => bot.registry.blocksByName[n]?.id).filter(x => x !== undefined);
   const mineIds = n => { n = n.toLowerCase().replace(/ /g, '_'); return ids([n, n + '_ore', 'deepslate_' + n + '_ore']); };
