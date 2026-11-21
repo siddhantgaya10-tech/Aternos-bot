@@ -45,7 +45,7 @@ class Runner {
     try { bot = mineflayer.createBot({ host, port, username, version: version || undefined, auth: 'offline', hideErrors: true, checkTimeoutInterval: 60000 }); }
     catch (e) { this.log('Could not start: ' + e.message); return this.retry(); }
     this.bot = bot; setup(bot, this);
-    bot.once('spawn', () => { this.tries = 0; this.since = Date.now(); this.set('online'); this.log('Joined the server'); this.afk(); });
+    bot.once('spawn', () => { this.tries = 0; this.since = Date.now(); this.set('online'); this.log('Joined the server'); bot.waitForChunksToLoad().then(() => this.afk()).catch(() => this.afk()); });
     bot.on('messagestr', m => { if (m.trim()) this.log('chat: ' + m); });
     bot.on('kicked', r => this.log('Kicked: ' + (typeof r === 'string' ? r : JSON.stringify(r))));
     bot.on('error', e => this.log('Error: ' + e.message));
@@ -66,9 +66,9 @@ class Runner {
       if (!this.busy) try {
         b.look(Math.random() * Math.PI * 2, (Math.random() - 0.5) * 0.6).catch(() => {});
         const r = Math.random();
-        if (r < 0.4) { b.setControlState('jump', true); setTimeout(() => b.setControlState('jump', false), 300); }
+        if (r < 0.4) { if (b.entity.onGround) b.setControlState('jump', true); setTimeout(() => b.setControlState('jump', false), 300); }
         else if (r < 0.7) b.swingArm();
-        else { const d = ['forward', 'back', 'left', 'right'][Math.floor(Math.random() * 4)]; b.setControlState(d, true); setTimeout(() => b.setControlState(d, false), 500 + Math.random() * 800); }
+        else { b.setControlState('sneak', true); setTimeout(() => b.setControlState('sneak', false), 600); }
       } catch {}
       this.at = setTimeout(tick, 15000 + Math.random() * 25000);
     };
@@ -118,6 +118,7 @@ api.post('/bots/:id/chat', (req, res) => {
   const r = get(req, res); if (!r) return;
   const m = String(req.body?.message || '').slice(0, 250);
   if (!r.bot || r.status !== 'online') return res.status(400).json({ error: 'Bot is not online.' });
+  if (m.startsWith('!') && r.runCommand) { r.log('you (command): ' + m); r.runCommand(m); return res.json({ ok: true }); }
   r.bot.chat(m); r.log('you: ' + m); res.json({ ok: true });
 });
 api.delete('/bots/:id', (req, res) => {
