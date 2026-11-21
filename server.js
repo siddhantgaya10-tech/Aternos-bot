@@ -42,10 +42,10 @@ class Runner {
     const { host, port, username, version } = this.cfg;
     this.set('connecting'); this.log(`Connecting to ${host}:${port} as ${username}`);
     let bot;
-    try { bot = mineflayer.createBot({ host, port, username, version: version || undefined, auth: 'offline', hideErrors: true, checkTimeoutInterval: 60000 }); }
+    try { bot = mineflayer.createBot({ host, port, username, version: version || undefined, auth: 'offline', hideErrors: true, checkTimeoutInterval: 120000 }); }
     catch (e) { this.log('Could not start: ' + e.message); return this.retry(); }
     this.bot = bot; setup(bot, this);
-    bot.once('spawn', () => { this.tries = 0; this.since = Date.now(); this.set('online'); this.log('Joined the server'); bot.waitForChunksToLoad().then(() => this.afk()).catch(() => this.afk()); });
+    bot.once('spawn', () => { this.tries = 0; this.since = Date.now(); this.set('online'); this.log('Joined the server (Minecraft ' + bot.version + ')'); bot.waitForChunksToLoad().then(() => this.afk()).catch(() => this.afk()); });
     bot.on('messagestr', m => { if (m.trim()) this.log('chat: ' + m); });
     bot.on('kicked', r => this.log('Kicked: ' + (typeof r === 'string' ? r : JSON.stringify(r))));
     bot.on('error', e => this.log('Error: ' + e.message));
@@ -63,13 +63,7 @@ class Runner {
   afk() {
     const tick = () => {
       const b = this.bot; if (!b) return;
-      if (!this.busy) try {
-        b.look(Math.random() * Math.PI * 2, (Math.random() - 0.5) * 0.6).catch(() => {});
-        const r = Math.random();
-        if (r < 0.4) { if (b.entity.onGround) b.setControlState('jump', true); setTimeout(() => b.setControlState('jump', false), 300); }
-        else if (r < 0.7) b.swingArm();
-        else { b.setControlState('sneak', true); setTimeout(() => b.setControlState('sneak', false), 600); }
-      } catch {}
+      if (!this.busy) try { b.swingArm(); } catch {}
       this.at = setTimeout(tick, 15000 + Math.random() * 25000);
     };
     this.at = setTimeout(tick, 5000);
