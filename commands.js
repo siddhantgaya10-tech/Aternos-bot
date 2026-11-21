@@ -64,11 +64,16 @@ export function setup(bot, r) {
     jump: () => { bot.setControlState('jump', true); setTimeout(() => bot.setControlState('jump', false), 300); },
   };
 
-  function handle(user, msg) {
-    if (!ownerName() || user.toLowerCase() !== ownerName() || !msg.startsWith('!')) return;
-    const key = user + msg, now = Date.now(); if (key === lastKey && now - lastAt < 800) return; lastKey = key; lastAt = now;
+  function exec(msg) {
     const [cmd, ...args] = msg.slice(1).trim().split(/\s+/); const f = cmds[cmd.toLowerCase()];
-    r.log(`owner: ${msg}`); if (!f) return say('Unknown command. Try !help'); Promise.resolve(f(args)).catch(e => say('Error: ' + e.message));
+    if (!f) return say('Unknown command. Try !help'); Promise.resolve(f(args)).catch(e => say('Error: ' + e.message));
+  }
+  r.runCommand = exec;
+  function handle(user, msg) {
+    if (!msg.startsWith('!') || user === bot.username) return;
+    const key = user + msg, now = Date.now(); if (key === lastKey && now - lastAt < 800) return; lastKey = key; lastAt = now;
+    if (!ownerName() || user.toLowerCase() !== ownerName()) return r.log(`Ignored "${msg}" from ${user} (owner is ${r.cfg.owner || 'not set'})`);
+    r.log(`owner: ${msg}`); exec(msg);
   }
   bot.on('chat', handle); bot.on('whisper', handle);
   bot.on('messagestr', m => { const x = m.match(/^(?:\[[^\]]*\]\s*)*<?(\w{3,16})>?[:»>]?\s+(!.+)$/); if (x) handle(x[1], x[2]); });
