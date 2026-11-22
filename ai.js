@@ -20,3 +20,14 @@ async function call(m, history, system, opts) {
 
 const BUSY = [404, 429, 500, 503];
 export async function ask(history, system, opts = {}) {
+  const models = FORCED ? [FORCED, FORCED] : [...new Set([model, 'gemini-flash-latest', 'gemini-flash-lite-latest'])];
+  let res;
+  for (let i = 0; i < models.length; i++) {
+    res = await call(models[i], history, system, opts);
+    if (res.ok || !BUSY.includes(res.status)) { if (res.ok && !FORCED) model = models[i]; break; }
+    if (i < models.length - 1) await new Promise(r => setTimeout(r, 800));
+  }
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) { const e = new Error(j.error?.message || 'HTTP ' + res.status); e.status = res.status; throw e; }
+  return (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+}
