@@ -1,12 +1,13 @@
 let KEY = process.env.GEMINI_API_KEY || '';
-const MODEL = process.env.GEMINI_MODEL || 'gemini-flash-latest';
-export const aiModel = MODEL;
+const FORCED = process.env.GEMINI_MODEL || '';
+let model = FORCED || 'gemini-3.1-flash';
+export const aiModel = model;
 export const setKey = k => { KEY = k || ''; };
 export const aiReady = () => !!KEY;
 export const keyHint = () => (KEY ? '••••' + KEY.slice(-4) : '');
 
-export async function ask(history, system, opts = {}) {
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
+async function call(m, history, system, opts) {
+  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': opts.key || KEY },
     body: JSON.stringify({
@@ -15,7 +16,7 @@ export async function ask(history, system, opts = {}) {
     }),
     signal: AbortSignal.timeout(opts.json ? 90000 : 25000),
   });
-  const j = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(j.error?.message || 'HTTP ' + res.status);
-  return (j.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
 }
+
+const BUSY = [404, 429, 500, 503];
+export async function ask(history, system, opts = {}) {
