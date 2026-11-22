@@ -97,7 +97,7 @@ api.get('/settings', (_, res) => res.json(keyState()));
 api.post('/settings', async (req, res) => {
   const k = String(req.body?.geminiKey || '').trim();
   if (!k) { setKey(process.env.GEMINI_API_KEY || ''); try { fs.unlinkSync(SET); } catch {} return res.json(keyState()); }
-  if (!/^[\w-]{20,200}$/.test(k)) return res.status(400).json({ error: 'That does not look like a Gemini API key.' });
+  if (!/^[^\s"'<>]{20,400}$/.test(k)) return res.status(400).json({ error: 'The key has spaces or is too short. Copy only the key itself.' });
   try { await ask([{ role: 'user', parts: [{ text: 'Say OK' }] }], 'Reply with OK.', { key: k }); } catch (e) { return res.status(400).json({ error: 'Key rejected: ' + e.message }); }
   setKey(k); fs.writeFileSync(SET, JSON.stringify({ geminiKey: k }), { mode: 0o600 }); res.json(keyState());
 });
